@@ -1,0 +1,19 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.burnratesms'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.burnratesms"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  api "androidx.core:core-ktx:1.13.1"
+}

@@ -1,35 +1,60 @@
 import { Tabs } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
+import { View } from 'react-native';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { CustomTabBar } from '@/components/burnrate/custom-tab-bar';
+import { QuickEntryOverlay } from '@/components/burnrate/quick-entry-overlay';
+
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const [isQuickEntryOpen, setIsQuickEntryOpen] = useState(false);
 
   return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+    <View style={{ flex: 1, backgroundColor: '#050505' }}>
+      <Tabs
+        tabBar={(props: BottomTabBarProps) => (
+          <CustomTabBar
+            {...props}
+            onPlusPress={() => setIsQuickEntryOpen(true)}
+          />
+        )}
+        screenOptions={{
+          headerShown: false,
         }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Dashboard',
+          }}
+        />
+        <Tabs.Screen
+          name="transactions"
+          options={{
+            title: 'Transactions',
+          }}
+        />
+        <Tabs.Screen
+          name="budgets"
+          options={{
+            title: 'Budgets',
+          }}
+        />
+        <Tabs.Screen
+          name="settings"
+          options={{
+            title: 'Settings',
+          }}
+        />
+      </Tabs>
+
+      {/* Low-Friction Overlay Sheets */}
+      <QuickEntryOverlay
+        isOpen={isQuickEntryOpen}
+        onClose={() => setIsQuickEntryOpen(false)}
       />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
-    </Tabs>
+
+    </View>
   );
 }

@@ -1,98 +1,222 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { ScrollView, Text, View } from "react-native";
+import type { ReactNode } from "react";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import {
+  BodyText,
+  Card,
+  Label,
+  Pill,
+  ProgressBar,
+  Screen,
+  ValueText,
+  palette,
+} from "@/components/burnrate/ui";
+import { formatInr } from "@/features/burnrate/calculations";
+import { useBurnrateStore } from "@/features/burnrate/store";
+import { IconSymbol } from "@/components/ui/icon-symbol";
 
-export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
-
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
-  );
+function formatRunwayParts(days: number | null): {
+  value: string;
+  unit: string;
+} {
+  if (days === null) return { value: "—", unit: "no burn yet" };
+  if (days > 365) return { value: "1y", unit: "plus" };
+  return { value: `${Math.max(0, Math.floor(days))}`, unit: "days" };
 }
 
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
+export default function DashboardScreen() {
+  const { isLoading, summary } = useBurnrateStore();
+  const runwayTone =
+    summary.runwayDays !== null && summary.runwayDays < 7 ? "coral" : "gold";
+  const runway = formatRunwayParts(summary.runwayDays);
+
+  return (
+    <Screen>
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 140 }}
+      >
+        <Card tone="panel" style={{ aspectRatio: "16/9" }}>
+          <View style={{ gap: 14, zIndex: 10 }}>
+            <Label style={{ fontWeight: "bold" }}>Balance</Label>
+            <ValueText>{formatInr(summary.balancePaise)}</ValueText>
+          </View>
+          <IconSymbol
+            name="bank"
+            size={48}
+            style={{
+              position: "absolute",
+              right: 16,
+              bottom: 12,
+              zIndex: 9,
+              opacity: 0.3,
+            }}
+            color={palette.paper}
+            weight="bold"
+          />
+        </Card>
+
+        <View style={{ flexDirection: "row", gap: 12, height: 124 }}>
+          <Card
+            tone={runwayTone}
+            shape="organic-left"
+            showHandle={false}
+            favoriteKey="runway"
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "flex-start",
+              paddingVertical: 16,
+            }}
+          >
+            <Label dark>Runway</Label>
+            <View
+              style={{
+                marginTop: 8,
+                gap: 2,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                selectable
+                style={{
+                  color: palette.ink,
+                  fontSize: 28,
+                  fontWeight: "900",
+                  textAlign: "center",
+                  lineHeight: 34,
+                }}
+              >
+                {runway.value}
+              </Text>
+              <Text
+                style={{
+                  color: "#4C3A2E",
+                  fontSize: 11,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  opacity: 0.6,
+                }}
+              >
+                {runway.unit}
+              </Text>
+            </View>
+          </Card>
+
+          <Card
+            tone="coral"
+            shape="organic-right"
+            showHandle={false}
+            favoriteKey="month"
+            style={{
+              flex: 1,
+              alignItems: "center",
+              justifyContent: "flex-start",
+              paddingVertical: 16,
+            }}
+          >
+            <Label dark>This month</Label>
+            <View
+              style={{
+                marginTop: 8,
+                gap: 1,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                selectable
+                style={{
+                  color: palette.ink,
+                  fontSize: 28,
+                  fontWeight: "900",
+                  textAlign: "center",
+                  lineHeight: 34,
+                }}
+              >
+                {formatInr(summary.monthSpendPaise)}
+              </Text>
+              <Text
+                style={{
+                  color: "#4C3A2E",
+                  fontSize: 11,
+                  fontWeight: "900",
+                  textTransform: "uppercase",
+                  opacity: 0.6,
+                }}
+              >
+                {formatInr(summary.dailyBurnPaise)} / day
+              </Text>
+            </View>
+          </Card>
+        </View>
+
+        <Card>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <Label>Budget pulse</Label>
+            <Pill>{summary.budgetWarnings.length ? "Watch" : "Calm"}</Pill>
+          </View>
+          {summary.budgetWarnings.length === 0 ? (
+            <BodyText muted>
+              {isLoading ? "Loading..." : "No category is over 80% this month."}
+            </BodyText>
+          ) : (
+            summary.budgetWarnings.map((warning) => (
+              <View key={warning.category} style={{ gap: 7 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <BodyText>{warning.category}</BodyText>
+                  <BodyText muted>
+                    {formatInr(warning.spentPaise)} /{" "}
+                    {formatInr(warning.limitPaise)}
+                  </BodyText>
+                </View>
+                <ProgressBar
+                  progress={warning.ratio}
+                  tone={warning.level === "breached" ? "bad" : "default"}
+                />
+              </View>
+            ))
+          )}
+        </Card>
+
+        <Card tone="cream">
+          <Label dark>Where it went</Label>
+          {summary.categoryBreakdown.length === 0 ? (
+            <BodyText dark muted>
+              Add expenses to see category share.
+            </BodyText>
+          ) : (
+            summary.categoryBreakdown.slice(0, 4).map((item) => (
+              <View key={item.category} style={{ gap: 7 }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <BodyText dark>{item.category}</BodyText>
+                  <BodyText dark muted>
+                    {formatInr(item.amountPaise)}
+                  </BodyText>
+                </View>
+                <ProgressBar dark progress={item.share} />
+              </View>
+            ))
+          )}
+        </Card>
+      </ScrollView>
+    </Screen>
+  );
+}
