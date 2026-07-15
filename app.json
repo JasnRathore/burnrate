@@ -17,6 +17,7 @@
       "enforceContrast": false
     },
     "android": {
+      "package": "com.burnrate.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -54,6 +55,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "39b3df77-1efe-4795-9411-fe2babafc493"
+      }
     }
   }
 }

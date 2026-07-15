@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 
-import { CATEGORIES, type AppSettings, type Budget, type SmsParseResult, type Transaction, type TransactionDirection } from '@/features/burnrate/types';
+import type { AppSettings, Budget, SmsParseResult, Transaction, TransactionDirection } from '@/features/burnrate/types';
 
 const DATABASE_NAME = 'burnrate.db';
 
@@ -35,11 +35,33 @@ export async function getBurnrateDb() {
   return db;
 }
 
+/**
+ * Open SQLite and ensure schema exists. Starts empty — no demo seed data.
+ * Defaults are applied lazily via getAppSettings / onboarding completion.
+ */
 export async function initializeBurnrateDb() {
   const db = await getBurnrateDb();
-  const seeded = await getSetting(db, 'demo_seeded');
-  if (!seeded) {
-    await seedDemoData(db);
+  // Legacy upgrade: previous builds seeded demo data without an onboarding flag.
+  const onboarding = await getSetting(db, 'onboarding_completed');
+  if (!onboarding) {
+    const legacySeeded = await getSetting(db, 'demo_seeded');
+    if (legacySeeded === 'true') {
+      await setSetting('onboarding_completed', true);
+    }
+  }
+
+  // Legacy: baseline was applied with ALL transactions, which double-counted
+  // activity already in the bank balance. Snapshot "as of now" so home matches
+  // the saved baseline until new activity is logged.
+  const balanceSetAt = await getSetting(db, 'opening_balance_set_at');
+  if (balanceSetAt == null) {
+    const hasBalance = await getSetting(db, 'opening_balance_paise');
+    const onboarded =
+      (await getSetting(db, 'onboarding_completed')) === 'true' ||
+      hasBalance != null;
+    if (onboarded) {
+      await setSetting('opening_balance_set_at', Date.now());
+    }
   }
 }
 
@@ -59,17 +81,57 @@ export async function listBudgets(): Promise<Budget[]> {
 
 export async function getAppSettings(): Promise<AppSettings> {
   const db = await getBurnrateDb();
-  const [openingBalance, smsConsent, smsEnabled] = await Promise.all([
+  const [openingBalance, balanceSetAt, smsConsent, smsEnabled, onboarding] = await Promise.all([
     getSetting(db, 'opening_balance_paise'),
+    getSetting(db, 'opening_balance_set_at'),
     getSetting(db, 'sms_consent_granted'),
     getSetting(db, 'sms_monitoring_enabled'),
+    getSetting(db, 'onboarding_completed'),
   ]);
 
   return {
     openingBalancePaise: Number(openingBalance ?? 0),
+    openingBalanceSetAt: Number(balanceSetAt ?? 0),
     smsConsentGranted: smsConsent === 'true',
     smsMonitoringEnabled: smsEnabled === 'true',
+    onboardingCompleted: onboarding === 'true',
   };
+}
+
+/** Persist first-run setup: balance snapshot, optional SMS prefs, mark onboarded. */
+export async function completeOnboarding(input: {
+  openingBalancePaise: number;
+  smsConsentGranted: boolean;
+}) {
+  const now = Date.now();
+  await setSetting('opening_balance_paise', Math.max(0, Math.round(input.openingBalancePaise)));
+  await setSetting('opening_balance_set_at', now);
+  await setSetting('sms_consent_granted', input.smsConsentGranted);
+  // Monitoring stays off until the user enables it later in Settings.
+  await setSetting('sms_monitoring_enabled', false);
+  await setSetting('onboarding_completed', true);
+}
+
+/** Update available-balance snapshot; only later transactions adjust home balance. */
+export async function setOpeningBalance(amountPaise: number) {
+  const now = Date.now();
+  await setSetting('opening_balance_paise', Math.max(0, Math.round(amountPaise)));
+  await setSetting('opening_balance_set_at', now);
+}
+
+/**
+ * Wipe all local SQLite data and settings so the next session is a first install
+ * (empty ledger, onboarding incomplete).
+ */
+export async function resetAppData() {
+  const db = await getBurnrateDb();
+  await db.execAsync(`
+    DELETE FROM transactions;
+    DELETE FROM budgets;
+    DELETE FROM sync_queue;
+    DELETE FROM sms_dedupes;
+    DELETE FROM settings;
+  `);
 }
 
 export async function setSetting(key: string, value: string | number | boolean) {
@@ -279,47 +341,6 @@ async function migrate(db: SQLite.SQLiteDatabase) {
       value TEXT NOT NULL
     );
   `);
-}
-
-async function seedDemoData(db: SQLite.SQLiteDatabase) {
-  await setSetting('opening_balance_paise', 850000);
-  await setSetting('sms_consent_granted', false);
-  await setSetting('sms_monitoring_enabled', false);
-
-  const now = Date.now();
-  const samples = [
-    ['expense', 'Hostel mess', 'Food', 12500, now - 1 * 24 * 60 * 60 * 1000],
-    ['expense', 'Metro card', 'Transport', 8000, now - 2 * 24 * 60 * 60 * 1000],
-    ['expense', 'Book store', 'College', 48000, now - 4 * 24 * 60 * 60 * 1000],
-    ['income', 'Monthly allowance', 'Income', 500000, now - 6 * 24 * 60 * 60 * 1000],
-  ] as const;
-
-  for (const [direction, merchant, category, amountPaise, occurredAt] of samples) {
-    await insertTransaction({
-      amountPaise,
-      category,
-      dedupeKey: null,
-      direction,
-      merchant,
-      occurredAt,
-      source: 'manual',
-    });
-  }
-
-  const createdAt = Date.now();
-  for (const category of CATEGORIES.slice(0, 4)) {
-    const id = category.toLowerCase().replace(/\W+/g, '-');
-    await db.runAsync(
-      `INSERT OR IGNORE INTO budgets (id, category, limit_paise, period, created_at, updated_at)
-       VALUES (?, ?, ?, 'monthly', ?, ?)`,
-      id,
-      category,
-      category === 'Food' ? 450000 : 200000,
-      createdAt,
-      createdAt
-    );
-  }
-  await setSetting('demo_seeded', true);
 }
 
 async function getSetting(db: SQLite.SQLiteDatabase, key: string) {

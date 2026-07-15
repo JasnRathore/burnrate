@@ -20,14 +20,40 @@ type BurnrateSmsModule = {
 
 let nativeModule: BurnrateSmsModule | null | undefined;
 
-function getNativeModule() {
-  if (nativeModule !== undefined) {
+const mockListeners = new Set<(event: BurnrateSmsEvent) => void>();
+
+const mockModule: BurnrateSmsModule = {
+  addListener: (eventName, listener) => {
+    if (eventName === 'onSmsReceived') {
+      mockListeners.add(listener);
+    }
+    return { remove: () => mockListeners.delete(listener) };
+  },
+  getPermissionStatusAsync: async () => 'granted',
+  isAvailableAsync: async () => true,
+  requestPermissionsAsync: async () => 'granted',
+  startListeningAsync: async () => true,
+  stopListeningAsync: async () => true,
+};
+
+// Expose a way to test SMS locally
+(globalThis as any).__injectMockSms = (message: string, sender: string = "VK-HDFCBK") => {
+  mockListeners.forEach(l => l({ message, receivedAt: Date.now(), sender }));
+};
+
+function getNativeModule(): BurnrateSmsModule {
+  if (nativeModule !== undefined && nativeModule !== null) {
     return nativeModule;
   }
   try {
-    nativeModule = Platform.OS === 'android' ? requireNativeModule<BurnrateSmsModule>('BurnrateSms') : null;
+    const mn = requireNativeModule<BurnrateSmsModule>('BurnrateSms');
+    nativeModule = mn;
   } catch {
     nativeModule = null;
+  }
+  // Fallback to mock if native module is not present (e.g. in Expo Go)
+  if (!nativeModule) {
+    nativeModule = mockModule;
   }
   return nativeModule;
 }

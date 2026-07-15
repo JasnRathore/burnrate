@@ -13,7 +13,7 @@ import {
 } from '@/modules/burnrate-sms/src';
 
 export function registerSmsImportPipeline(enabled: boolean): BurnrateSmsSubscription | null {
-  if (!enabled || Platform.OS !== 'android') {
+  if (!enabled) {
     stopListeningAsync().catch(() => undefined);
     return null;
   }

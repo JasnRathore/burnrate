@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import { summarizeDashboard } from '@/features/burnrate/calculations';
 import type { AppSettings, Budget, DashboardSummary, SmsParseResult, Transaction, TransactionDirection } from '@/features/burnrate/types';
 import {
+  completeOnboarding as dbCompleteOnboarding,
   createManualTransaction,
   createSmsTransaction,
   deleteTransaction as dbDeleteTransaction,
@@ -13,9 +14,11 @@ import {
   initializeBurnrateDb,
   listBudgets,
   listTransactions,
+  setOpeningBalance as dbSetOpeningBalance,
   setSetting,
   upsertBudget,
   deleteBudget as dbDeleteBudget,
+  resetAppData as dbResetAppData,
 } from '@/lib/db/burnrate-db';
 
 type BurnrateState = {
@@ -45,12 +48,20 @@ type BurnrateState = {
   setSmsMonitoring: (enabled: boolean) => Promise<void>;
   saveBudget: (category: string, limitPaise: number) => Promise<void>;
   deleteBudget: (id: string) => Promise<void>;
+  completeOnboarding: (input: {
+    openingBalancePaise: number;
+    smsConsentGranted: boolean;
+  }) => Promise<void>;
+  /** Clear all local data and return store to first-run state. */
+  resetToFirstRun: () => Promise<void>;
 };
 
 const emptySettings: AppSettings = {
   openingBalancePaise: 0,
+  openingBalanceSetAt: 0,
   smsConsentGranted: false,
   smsMonitoringEnabled: false,
+  onboardingCompleted: false,
 };
 
 export const useBurnrateStore = create<BurnrateState>((set, get) => ({
@@ -101,7 +112,7 @@ export const useBurnrateStore = create<BurnrateState>((set, get) => ({
     set({ isOnline });
   },
   async setOpeningBalance(amountPaise) {
-    await setSetting('opening_balance_paise', amountPaise);
+    await dbSetOpeningBalance(amountPaise);
     await get().refresh();
   },
   async setSmsConsent(granted) {
@@ -122,6 +133,21 @@ export const useBurnrateStore = create<BurnrateState>((set, get) => ({
   async deleteBudget(id) {
     await dbDeleteBudget(id);
     await get().refresh();
+  },
+  async completeOnboarding(input) {
+    await dbCompleteOnboarding(input);
+    await get().refresh();
+  },
+  async resetToFirstRun() {
+    await dbResetAppData();
+    set({
+      budgets: [],
+      error: null,
+      pendingSyncCount: 0,
+      settings: { ...emptySettings },
+      summary: summarizeDashboard([], [], emptySettings),
+      transactions: [],
+    });
   },
 }));
 

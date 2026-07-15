@@ -1,14 +1,14 @@
-import { ScrollView, Text, View } from "react-native";
-import type { ReactNode } from "react";
+import { ScrollView, Text, View, Pressable } from "react-native";
+import { useRouter } from "expo-router";
 
+import { WeekSpendChart } from "@/components/burnrate/week-spend-chart";
 import {
   BodyText,
   Card,
   Label,
-  Pill,
   ProgressBar,
   Screen,
-  ValueText,
+  AnimatedValueText,
   palette,
 } from "@/components/burnrate/ui";
 import { formatInr } from "@/features/burnrate/calculations";
@@ -25,21 +25,23 @@ function formatRunwayParts(days: number | null): {
 }
 
 export default function DashboardScreen() {
-  const { isLoading, summary } = useBurnrateStore();
+  const router = useRouter();
+  const { summary, } = useBurnrateStore();
   const runwayTone =
-    summary.runwayDays !== null && summary.runwayDays < 7 ? "coral" : "gold";
+    summary.runwayDays !== null && summary.runwayDays < 7 ? "blush" : "peach";
   const runway = formatRunwayParts(summary.runwayDays);
-
   return (
     <Screen>
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{ gap: 14, padding: 16, paddingBottom: 140 }}
+        contentContainerStyle={{ gap: 12, padding: 14, paddingBottom: 140 }}
       >
+
+        {/* Balance card — structure, graphics, and position preserved */}
         <Card tone="panel" style={{ aspectRatio: "16/9" }}>
           <View style={{ gap: 14, zIndex: 10 }}>
             <Label style={{ fontWeight: "bold" }}>Balance</Label>
-            <ValueText>{formatInr(summary.balancePaise)}</ValueText>
+            <AnimatedValueText value={summary.balancePaise} formatter={formatInr} />
           </View>
           <IconSymbol
             name="bank"
@@ -56,7 +58,7 @@ export default function DashboardScreen() {
           />
         </Card>
 
-        <View style={{ flexDirection: "row", gap: 12, height: 124 }}>
+        <View style={{ flexDirection: "row", gap: 10, height: 108 }}>
           <Card
             tone={runwayTone}
             shape="organic-left"
@@ -66,13 +68,13 @@ export default function DashboardScreen() {
               flex: 1,
               alignItems: "center",
               justifyContent: "flex-start",
-              paddingVertical: 16,
+              paddingVertical: 8,
             }}
           >
             <Label dark>Runway</Label>
             <View
               style={{
-                marginTop: 8,
+                marginTop: 2,
                 gap: 2,
                 alignItems: "center",
               }}
@@ -82,7 +84,8 @@ export default function DashboardScreen() {
                 style={{
                   color: palette.ink,
                   fontSize: 28,
-                  fontWeight: "900",
+                  fontWeight: "600",
+                  letterSpacing: -0.6,
                   textAlign: "center",
                   lineHeight: 34,
                 }}
@@ -91,11 +94,11 @@ export default function DashboardScreen() {
               </Text>
               <Text
                 style={{
-                  color: "#4C3A2E",
+                  color: "rgba(10,10,10,0.5)",
                   fontSize: 11,
-                  fontWeight: "900",
+                  fontWeight: "600",
                   textTransform: "uppercase",
-                  opacity: 0.6,
+                  fontFamily: "monospace",
                 }}
               >
                 {runway.unit}
@@ -104,7 +107,7 @@ export default function DashboardScreen() {
           </Card>
 
           <Card
-            tone="coral"
+            tone="blush"
             shape="organic-right"
             showHandle={false}
             favoriteKey="month"
@@ -112,13 +115,13 @@ export default function DashboardScreen() {
               flex: 1,
               alignItems: "center",
               justifyContent: "flex-start",
-              paddingVertical: 16,
+              paddingVertical: 8,
             }}
           >
             <Label dark>This month</Label>
             <View
               style={{
-                marginTop: 8,
+                marginTop: 2,
                 gap: 1,
                 alignItems: "center",
               }}
@@ -128,7 +131,8 @@ export default function DashboardScreen() {
                 style={{
                   color: palette.ink,
                   fontSize: 28,
-                  fontWeight: "900",
+                  fontWeight: "600",
+                  letterSpacing: -0.6,
                   textAlign: "center",
                   lineHeight: 34,
                 }}
@@ -137,60 +141,42 @@ export default function DashboardScreen() {
               </Text>
               <Text
                 style={{
-                  color: "#4C3A2E",
                   fontSize: 11,
-                  fontWeight: "900",
                   textTransform: "uppercase",
-                  opacity: 0.6,
+                  fontFamily: "monospace",
                 }}
               >
-                {formatInr(summary.dailyBurnPaise)} / day
+                <Text
+                  style={{
+                    color: "#111", // darker
+                    fontWeight: "800", // bolder
+                  }}
+                >
+                  {formatInr(summary.dailyBurnPaise)}
+                </Text>
+
+                <Text
+                  style={{
+                    color: "rgba(10,10,10,0.5)",
+                    fontWeight: "600",
+                  }}
+                >
+                  {" "} / day
+                </Text>
               </Text>
             </View>
           </Card>
         </View>
 
-        <Card>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              gap: 12,
-            }}
-          >
-            <Label>Budget pulse</Label>
-            <Pill>{summary.budgetWarnings.length ? "Watch" : "Calm"}</Pill>
-          </View>
-          {summary.budgetWarnings.length === 0 ? (
-            <BodyText muted>
-              {isLoading ? "Loading..." : "No category is over 80% this month."}
-            </BodyText>
-          ) : (
-            summary.budgetWarnings.map((warning) => (
-              <View key={warning.category} style={{ gap: 7 }}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    justifyContent: "space-between",
-                    gap: 12,
-                  }}
-                >
-                  <BodyText>{warning.category}</BodyText>
-                  <BodyText muted>
-                    {formatInr(warning.spentPaise)} /{" "}
-                    {formatInr(warning.limitPaise)}
-                  </BodyText>
-                </View>
-                <ProgressBar
-                  progress={warning.ratio}
-                  tone={warning.level === "breached" ? "bad" : "default"}
-                />
-              </View>
-            ))
-          )}
+        <Card style={{ overflow: "visible", zIndex: 10 }}>
+          <WeekSpendChart
+            days={summary.weekDays ?? []}
+            totalPaise={summary.weekSpendPaise ?? 0}
+            weekAvgDailyPaise={summary.weekAvgDailyPaise ?? 0}
+          />
         </Card>
 
-        <Card tone="cream">
+        <Card tone="lemon">
           <Label dark>Where it went</Label>
           {summary.categoryBreakdown.length === 0 ? (
             <BodyText dark muted>
@@ -198,7 +184,13 @@ export default function DashboardScreen() {
             </BodyText>
           ) : (
             summary.categoryBreakdown.slice(0, 4).map((item) => (
-              <View key={item.category} style={{ gap: 7 }}>
+              <Pressable
+                key={item.category}
+                style={({ pressed }) => ({ gap: 7, opacity: pressed ? 0.7 : 1 })}
+                onPress={() => {
+                  router.push(`/transactions?filterCategory=${encodeURIComponent(item.category)}`);
+                }}
+              >
                 <View
                   style={{
                     flexDirection: "row",
@@ -212,7 +204,7 @@ export default function DashboardScreen() {
                   </BodyText>
                 </View>
                 <ProgressBar dark progress={item.share} />
-              </View>
+              </Pressable>
             ))
           )}
         </Card>

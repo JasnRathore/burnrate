@@ -237,7 +237,7 @@ export function BudgetFormOverlay({ budget, isOpen, onClose }: Props) {
                       style={({ pressed }) => [
                         styles.confirmBtn,
                         !saving && amount.trim()
-                          ? { backgroundColor: palette.cream, opacity: pressed ? 0.82 : 1 }
+                          ? { backgroundColor: palette.paper, opacity: pressed ? 0.82 : 1 }
                           : styles.confirmBtnDisabled,
                       ]}
                     >
@@ -269,12 +269,12 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   sheet: {
-    backgroundColor: "rgba(16, 16, 14, 0.97)",
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: "rgba(14, 14, 14, 0.98)",
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
     borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: "rgba(255,255,255,0.12)",
     maxHeight: SCREEN_HEIGHT * 0.88,
     overflow: "hidden",
     paddingBottom: 100,
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 36,
     height: 4,
-    backgroundColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(255,255,255,0.16)",
     borderRadius: 2,
   },
   sheetInner: {
@@ -304,18 +304,18 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   title: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#FFF",
-    letterSpacing: -0.3,
+    fontSize: 22,
+    fontWeight: "600",
+    color: "#FAFAFA",
+    letterSpacing: -0.6,
   },
   closeBtn: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -326,23 +326,24 @@ const styles = StyleSheet.create({
   section: { gap: 8 },
   sectionLabel: { fontSize: 11, letterSpacing: 0.5 },
   inputField: {
-    fontSize: 17,
+    fontSize: 16,
     minHeight: 48,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
     borderWidth: 1,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 14,
+    backgroundColor: palette.surface,
+    borderRadius: 12,
     paddingHorizontal: 16,
     color: palette.paper,
+    fontFamily: "monospace",
   },
-  confirmBtnText: { fontSize: 15, fontWeight: "900" },
+  confirmBtnText: { fontSize: 14, fontWeight: "700" },
   confirmBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     paddingVertical: 13,
-    borderRadius: 16,
+    borderRadius: 10,
     marginTop: 4,
   },
   confirmBtnDisabled: {
@@ -351,14 +352,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
   },
   chip: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 999,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: "rgba(255,255,255,0.12)",
     backgroundColor: "rgba(255,255,255,0.04)",
   },
   chipActive: { backgroundColor: palette.paper, borderColor: palette.paper },
-  chipText: { fontSize: 14, fontWeight: "700", color: palette.muted },
+  chipText: { fontSize: 13, fontWeight: "600", color: palette.muted, fontFamily: "monospace" },
   chipTextActive: { color: palette.ink },
 });

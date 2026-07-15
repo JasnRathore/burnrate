@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { summarizeDashboard } from '../features/burnrate/calculations.ts';
+import { parseRupeesToPaise, summarizeDashboard } from '../features/burnrate/calculations.ts';
 import { createSmsDedupeKey, parseFinancialSms } from '../features/sms/sms-parser.ts';
 
 const now = new Date('2026-05-20T12:00:00.000Z').getTime();
@@ -13,7 +13,13 @@ test('runway calculation uses seven-day burn and current balance', () => {
       transaction('income', 300000, 'Income', now - 2 * 24 * 60 * 60 * 1000),
     ],
     [{ id: 'food', category: 'Food', limitPaise: 500000, period: 'monthly', createdAt: now, updatedAt: now }],
-    { openingBalancePaise: 300000, smsConsentGranted: false, smsMonitoringEnabled: false },
+    {
+      openingBalancePaise: 300000,
+      openingBalanceSetAt: 0,
+      smsConsentGranted: false,
+      smsMonitoringEnabled: false,
+      onboardingCompleted: true,
+    },
     now
   );
 
@@ -21,6 +27,33 @@ test('runway calculation uses seven-day burn and current balance', () => {
   assert.equal(summary.dailyBurnPaise, 60000);
   assert.equal(summary.runwayDays, 3);
   assert.equal(summary.budgetWarnings[0].level, 'warning');
+  assert.equal(summary.weekDays.length, 7);
+  assert.ok(typeof summary.weekSpendPaise === 'number');
+});
+
+test('balance ignores transactions at or before baseline set time', () => {
+  const setAt = now - 12 * 60 * 60 * 1000; // baseline set midday yesterday window
+  const summary = summarizeDashboard(
+    [
+      // Already reflected in bank balance when baseline was set — must not count
+      transaction('income', 395800, 'Income', setAt - 60 * 60 * 1000),
+      transaction('expense', 10000, 'Food', setAt - 30 * 60 * 1000),
+      // After baseline — should count
+      transaction('expense', 50000, 'Food', setAt + 60 * 60 * 1000),
+    ],
+    [],
+    {
+      openingBalancePaise: 1000000,
+      openingBalanceSetAt: setAt,
+      smsConsentGranted: false,
+      smsMonitoringEnabled: false,
+      onboardingCompleted: true,
+    },
+    now
+  );
+
+  // 10000 rupees baseline - 500 expense after set = 9500 rupees in paise
+  assert.equal(summary.balancePaise, 950000);
 });
 
 test('parses debit UPI SMS messages', async () => {
@@ -44,6 +77,13 @@ test('parses credit SMS messages', async () => {
   assert.equal(parsed?.amountPaise, 200000);
   assert.equal(parsed?.direction, 'income');
   assert.equal(parsed?.merchant, 'Rahul');
+});
+
+test('parseRupeesToPaise allows zero and rejects invalid', () => {
+  assert.equal(parseRupeesToPaise('0'), 0);
+  assert.equal(parseRupeesToPaise('150.5'), 15050);
+  assert.equal(parseRupeesToPaise(''), null);
+  assert.equal(parseRupeesToPaise('-10'), null);
 });
 
 test('dedupe hash is stable and changes with amount', async () => {

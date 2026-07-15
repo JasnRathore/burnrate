@@ -6,12 +6,11 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { CustomTabBar } from '@/components/burnrate/custom-tab-bar';
 import { QuickEntryOverlay } from '@/components/burnrate/quick-entry-overlay';
 
-
 export default function TabLayout() {
   const [isQuickEntryOpen, setIsQuickEntryOpen] = useState(false);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#050505' }}>
+    <View style={{ flex: 1, backgroundColor: '#0A0A0A' }}>
       <Tabs
         tabBar={(props: BottomTabBarProps) => (
           <CustomTabBar

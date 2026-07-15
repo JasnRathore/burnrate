@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
+import { useLocalSearchParams } from "expo-router";
 import {
   Alert,
   Animated,
@@ -9,6 +10,7 @@ import {
   Text,
   View,
   Pressable,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -18,6 +20,7 @@ import {
   PageHeader,
   Screen,
   palette,
+  Pill,
 } from "@/components/burnrate/ui";
 import { formatInr } from "@/features/burnrate/calculations";
 import { useBurnrateStore } from "@/features/burnrate/store";
@@ -37,13 +40,26 @@ function SwipeableRow({
   children,
   onEdit,
   onDelete,
+  initialPeek = false,
 }: {
   children: React.ReactNode;
   onEdit: () => void;
   onDelete: () => void;
+  initialPeek?: boolean;
 }) {
   const translateX = useRef(new Animated.Value(0)).current;
   const rowOpen = useRef(false);
+
+  useEffect(() => {
+    if (initialPeek) {
+      setTimeout(() => {
+        Animated.sequence([
+          Animated.timing(translateX, { toValue: -40, duration: 250, useNativeDriver: true }),
+          Animated.timing(translateX, { toValue: 0, duration: 250, useNativeDriver: true, delay: 200 })
+        ]).start();
+      }, 600);
+    }
+  }, [initialPeek, translateX]);
 
   const close = useCallback(() => {
     Animated.spring(translateX, {
@@ -114,7 +130,7 @@ function SwipeableRow({
             close();
             onDelete();
           }}
-          style={{ backgroundColor: palette.coral, flex: 1, alignItems: "center", justifyContent: "center" }}
+          style={{ backgroundColor: palette.red, flex: 1, alignItems: "center", justifyContent: "center" }}
         >
           <IconSymbol name="trash" size={22} color="#fff" />
         </Pressable>
@@ -151,8 +167,8 @@ function ContextMenu({
 }) {
   // Decide whether the menu opens upward or downward
   const MENU_HEIGHT = 104;
-  const SCREEN_THRESHOLD = 500;
-  const openUp = menu.y > SCREEN_THRESHOLD;
+  const screenHeight = Dimensions.get("window").height;
+  const openUp = menu.y > screenHeight - MENU_HEIGHT - 100;
 
   return (
     <Modal
@@ -193,8 +209,8 @@ function ContextMenu({
           style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]}
           onPress={onDelete}
         >
-          <IconSymbol name="trash" size={16} color={palette.coral} />
-          <Text style={[styles.menuItemText, { color: palette.coral }]}>Delete</Text>
+          <IconSymbol name="trash" size={16} color={palette.red} />
+          <Text style={[styles.menuItemText, { color: palette.red }]}>Delete</Text>
         </Pressable>
       </View>
     </Modal>
@@ -203,6 +219,7 @@ function ContextMenu({
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function TransactionsScreen() {
+  const { filterCategory: initialCategory } = useLocalSearchParams<{ filterCategory?: string }>();
   const insets = useSafeAreaInsets();
   const transactions    = useBurnrateStore((s) => s.transactions);
   const deleteTransaction = useBurnrateStore((s) => s.deleteTransaction);
@@ -210,10 +227,17 @@ export default function TransactionsScreen() {
   const [currentDate,       setCurrentDate]       = useState(() => new Date());
   const [filterType,        setFilterType]         = useState<"all" | "expense" | "income">("all");
   const [filterCategory,    setFilterCategory]     = useState<string>("all");
+  const [quickFilter,       setQuickFilter]        = useState<"all" | "today" | "week" | "high_value">("all");
   const [isFilterOpen,      setIsFilterOpen]       = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen]  = useState(false);
   const [activeMenu,        setActiveMenu]         = useState<MenuState | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+
+  useEffect(() => {
+    if (initialCategory) {
+      setFilterCategory(initialCategory);
+    }
+  }, [initialCategory]);
 
   // ── Filtered list ──────────────────────────────────────────────────────────
   const filteredTransactions = useMemo(() => {
@@ -225,9 +249,20 @@ export default function TransactionsScreen() {
       ) return false;
       if (filterType     !== "all" && t.direction !== filterType)   return false;
       if (filterCategory !== "all" && t.category  !== filterCategory) return false;
+      
+      const now = new Date();
+      if (quickFilter === "today") {
+         if (date.toDateString() !== now.toDateString()) return false;
+      } else if (quickFilter === "week") {
+         const diff = now.getTime() - date.getTime();
+         if (diff > 7 * 24 * 60 * 60 * 1000 || diff < 0) return false;
+      } else if (quickFilter === "high_value") {
+         if (t.amountPaise < 500000) return false;
+      }
+
       return true;
     });
-  }, [transactions, currentDate, filterType, filterCategory]);
+  }, [transactions, currentDate, filterType, filterCategory, quickFilter]);
 
   const netTotal = useMemo(() =>
     filteredTransactions.reduce((sum, t) =>
@@ -246,6 +281,7 @@ export default function TransactionsScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFilterType("all");
     setFilterCategory("all");
+    setQuickFilter("all");
     setCurrentDate(new Date());
   };
 
@@ -272,7 +308,7 @@ export default function TransactionsScreen() {
   const scrollY = useRef(new Animated.Value(0)).current;
   // Heights of the two overlay regions (not including safe-area inset)
   const HEADER_H = 54;
-  const FILTER_H = 76;  // pill 52px + paddingTop:8 + paddingBottom:8 + border
+  const FILTER_H = 124;  // pill row added (76 + 48)
 
   // Both overlays slide up together at the scroll rate, clamped once the
   // filter bar reaches the top. useNativeDriver:true → runs on UI thread, no jitter.
@@ -312,10 +348,10 @@ export default function TransactionsScreen() {
         )}
 
         {/* Transaction rows */}
-        {filteredTransactions.map((transaction) => {
+        {filteredTransactions.map((transaction, index) => {
           const isIncome = transaction.direction === "income";
-          const iconColor = isIncome ? palette.green : palette.coral;
-          const bgTint    = isIncome ? "rgba(183, 240, 108, 0.12)" : "rgba(255, 112, 89, 0.12)";
+          const iconColor = isIncome ? palette.celadon : palette.red;
+          const bgTint    = isIncome ? "rgba(155, 184, 165, 0.14)" : "rgba(255, 107, 107, 0.12)";
           const formattedDate = new Date(transaction.occurredAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
@@ -324,6 +360,7 @@ export default function TransactionsScreen() {
           return (
             <SwipeableRow
               key={transaction.id}
+              initialPeek={index === 0}
               onEdit={() => setEditingTransaction(transaction)}
               onDelete={() => handleDelete(transaction)}
             >
@@ -346,7 +383,7 @@ export default function TransactionsScreen() {
                   </Text>
                   <Text
                     selectable
-                    style={[styles.amount, { color: isIncome ? palette.green : palette.paper }]}
+                    style={[styles.amount, { color: isIncome ? palette.celadon : palette.paper }]}
                   >
                     {isIncome ? "+" : ""}{formatInr(transaction.amountPaise)}
                   </Text>
@@ -411,7 +448,7 @@ export default function TransactionsScreen() {
                 fontSize: 15,
                 fontWeight: "800",
                 fontVariant: ["tabular-nums"],
-                color: netTotal >= 0 ? palette.green : palette.coral,
+                color: netTotal >= 0 ? palette.celadon : palette.red,
               }}
             >
               {netTotal >= 0 ? "+" : ""}{formatInr(netTotal)}
@@ -473,6 +510,14 @@ export default function TransactionsScreen() {
             </Pressable>
           </View>
         </View>
+
+        {/* Quick Filters */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16, paddingBottom: 12 }}>
+          <Pill active={quickFilter === "all"} onPress={() => setQuickFilter("all")}>All</Pill>
+          <Pill active={quickFilter === "today"} onPress={() => setQuickFilter("today")}>Today</Pill>
+          <Pill active={quickFilter === "week"} onPress={() => setQuickFilter("week")}>This Week</Pill>
+          <Pill active={quickFilter === "high_value"} onPress={() => setQuickFilter("high_value")}>&gt; ₹5k</Pill>
+        </ScrollView>
       </Animated.View>
 
 
@@ -525,8 +570,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#141412",
-    borderRadius: 16,
+    backgroundColor: palette.panel,
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
@@ -534,22 +579,23 @@ const styles = StyleSheet.create({
   },
   monthText: {
     color: palette.paper,
-    fontSize: 16,
-    fontWeight: "800",
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: -0.2,
   },
   // Shared icon button
   iconBtn: {
     width: 52,
     height: 52,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderRadius: 16,
+    backgroundColor: palette.surface,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: palette.border,
     alignItems: "center",
     justifyContent: "center",
   },
   iconBtnDark: {
-    backgroundColor: "#141412",
+    backgroundColor: palette.panel,
     borderColor: palette.border,
     position: "relative",
   },
@@ -560,11 +606,11 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: palette.coral,
+    backgroundColor: palette.celadon,
   },
   // Transaction row
   row: {
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    borderBottomColor: "rgba(255,255,255,0.08)",
     borderBottomWidth: 1,
     paddingVertical: 14,
     paddingHorizontal: 16,
@@ -581,20 +627,22 @@ const styles = StyleSheet.create({
   },
   merchant: {
     color: palette.paper,
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "600",
     flex: 1,
     marginRight: 8,
   },
   amount: {
-    fontSize: 16,
+    fontSize: 15,
     fontVariant: ["tabular-nums"],
-    fontWeight: "800",
+    fontWeight: "700",
+    letterSpacing: -0.2,
   },
   meta: {
     color: palette.muted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "500",
+    fontFamily: "monospace",
   },
   dot: {
     width: 3,
@@ -606,13 +654,14 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.08)",
     paddingHorizontal: 6,
     paddingVertical: 2,
-    borderRadius: 4,
+    borderRadius: 8,
   },
   smsText: {
     color: "rgba(255,255,255,0.6)",
     fontSize: 10,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: 0.5,
+    fontFamily: "monospace",
   },
   dotsBtn: {
     width: 32,
@@ -625,10 +674,10 @@ const styles = StyleSheet.create({
   menuCard: {
     position: "absolute",
     width: 160,
-    backgroundColor: "#1E1E1C",
-    borderRadius: 14,
+    backgroundColor: palette.panel,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
+    borderColor: palette.border,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
@@ -648,12 +697,12 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     color: palette.paper,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
   },
   menuDivider: {
     height: 1,
-    backgroundColor: "rgba(255,255,255,0.07)",
+    backgroundColor: "rgba(255,255,255,0.08)",
     marginHorizontal: 12,
   },
 });

@@ -39,11 +39,36 @@ export type BudgetWarning = {
   level: 'warning' | 'breached';
 };
 
+export type WeekDayCategorySpend = {
+  category: string;
+  amountPaise: number;
+};
+
+export type WeekDaySpend = {
+  /** Short weekday label, e.g. Mon */
+  label: string;
+  /** Start of local calendar day (epoch ms) */
+  dayStart: number;
+  amountPaise: number;
+  /** Per-category expense breakdown for stacked bars */
+  categories: WeekDayCategorySpend[];
+  /** True when this bar is today */
+  isToday: boolean;
+};
+
 export type DashboardSummary = {
   balancePaise: number;
   dailyBurnPaise: number;
   runwayDays: number | null;
   monthSpendPaise: number;
+  /** Total expense for the current Mon–Sun calendar week */
+  weekSpendPaise: number;
+  /**
+   * Mean daily expense for this calendar week only (weekSpend / 7).
+   * Not the same as dailyBurnPaise (rolling 7-day / month burn).
+   */
+  weekAvgDailyPaise: number;
+  weekDays: WeekDaySpend[];
   budgetWarnings: BudgetWarning[];
   categoryBreakdown: CategoryBreakdownItem[];
 };
@@ -67,9 +92,17 @@ export type SyncMutation = {
 };
 
 export type AppSettings = {
+  /** Snapshot of available money at `openingBalanceSetAt`. */
   openingBalancePaise: number;
+  /**
+   * Epoch ms when the baseline was last set. Balance only applies transactions
+   * with occurredAt strictly after this (so the snapshot is not double-counted).
+   * 0 means legacy: apply all transactions.
+   */
+  openingBalanceSetAt: number;
   smsConsentGranted: boolean;
   smsMonitoringEnabled: boolean;
+  onboardingCompleted: boolean;
 };
 
 export const CATEGORIES = [

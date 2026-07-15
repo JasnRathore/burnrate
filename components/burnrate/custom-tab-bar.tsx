@@ -62,7 +62,7 @@ export function CustomTabBar({
     const { options } = descriptors[route.key];
     const isFocused = state.index === actualIndex;
 
-    const color = isFocused ? palette.cream : "#77736A";
+    const color = isFocused ? palette.paper : palette.muted;
 
     return (
       <Pressable
@@ -117,7 +117,7 @@ export function CustomTabBar({
               { opacity: pressed ? 0.85 : 1 },
             ]}
           >
-            <IconSymbol name="plus" size={24} color="#FFF" weight="bold" />
+            <IconSymbol name="plus" size={24} color="#0A0A0A" weight="bold" />
           </Pressable>
         </View>
 
@@ -150,14 +150,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "rgba(20, 20, 18, 0.92)",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.08)",
+    backgroundColor: "rgba(14, 14, 14, 0.94)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
     paddingHorizontal: 16,
     overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.45,
     shadowRadius: 16,
     elevation: 12,
   },
@@ -185,14 +185,15 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: "#000",
+    // Dark-mode CTA from index.html: solid light fill
+    backgroundColor: "#FAFAFA",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.18)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.25,
     shadowRadius: 5,
     elevation: 4,
   },

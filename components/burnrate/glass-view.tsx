@@ -27,13 +27,13 @@ export function GlassView({
     );
   }
 
-  // Calibrated Android/Web premium fallback
+  // Calibrated Android/Web fallback matching bento dark surfaces
   const backgroundColor =
     tint === "light"
       ? `rgba(255, 255, 255, ${Math.min(0.25, 0.05 + intensity / 300)})`
       : tint === "dark"
-        ? `rgba(18, 18, 16, ${Math.min(0.97, 0.85 + intensity / 400)})`
-        : `rgba(20, 20, 18, ${Math.min(0.95, 0.8 + intensity / 400)})`;
+        ? `rgba(14, 14, 14, ${Math.min(0.97, 0.85 + intensity / 400)})`
+        : `rgba(16, 16, 16, ${Math.min(0.95, 0.8 + intensity / 400)})`;
 
   return (
     <View style={[{ backgroundColor }, style]} {...props}>

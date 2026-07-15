@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, View, Pressable, Animated, PanResponder, Modal } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, View, Pressable, Animated, PanResponder, Modal, Dimensions } from 'react-native';
 
-import { BodyText, Card, Field, Label, PageHeader, Pill, PrimaryButton, ProgressBar, Screen, palette } from '@/components/burnrate/ui';
+import { PageHeader, PrimaryButton, ProgressBar, Screen, palette } from '@/components/burnrate/ui';
 import { formatInr, rupeesToPaise } from '@/features/burnrate/calculations';
 import { CATEGORIES, getCategoryIcon } from '@/features/burnrate/types';
 import { useBurnrateStore } from '@/features/burnrate/store';
@@ -84,7 +84,7 @@ function SwipeableRow({
         </Pressable>
         <Pressable
           onPress={() => { close(); onDelete(); }}
-          style={{ backgroundColor: palette.coral, flex: 1, alignItems: "center", justifyContent: "center" }}
+          style={{ backgroundColor: palette.red, flex: 1, alignItems: "center", justifyContent: "center" }}
         >
           <IconSymbol name="trash" size={22} color="#fff" />
         </Pressable>
@@ -119,8 +119,8 @@ function ContextMenu({
   onDelete: () => void;
 }) {
   const MENU_HEIGHT = 104;
-  const SCREEN_THRESHOLD = 500;
-  const openUp = menu.y > SCREEN_THRESHOLD;
+  const screenHeight = Dimensions.get('window').height;
+  const openUp = menu.y > screenHeight - MENU_HEIGHT - 100;
 
   return (
     <Modal
@@ -145,8 +145,8 @@ function ContextMenu({
         </Pressable>
         <View style={styles.menuDivider} />
         <Pressable style={({ pressed }) => [styles.menuItem, pressed && styles.menuItemPressed]} onPress={onDelete}>
-          <IconSymbol name="trash" size={16} color={palette.coral} />
-          <Text style={[styles.menuItemText, { color: palette.coral }]}>Delete</Text>
+          <IconSymbol name="trash" size={16} color={palette.red} />
+          <Text style={[styles.menuItemText, { color: palette.red }]}>Delete</Text>
         </Pressable>
       </View>
     </Modal>
@@ -205,6 +205,14 @@ export default function BudgetsScreen() {
           </PrimaryButton>
         </View>
 
+        {budgets.length === 0 ? (
+          <View style={{ paddingVertical: 24, paddingHorizontal: 4 }}>
+            <Text style={{ color: palette.muted, fontSize: 14, fontFamily: 'monospace', lineHeight: 20 }}>
+              Set your first monthly budget to start tracking your spending.
+            </Text>
+          </View>
+        ) : null}
+
         {/* ── Budget list ──────────────────────────────────────────────── */}
         {budgets.length > 0 && (
           <View>
@@ -225,11 +233,11 @@ export default function BudgetsScreen() {
                 >
                   <View style={styles.budgetRow}>
                     {/* Icon */}
-                    <View style={[styles.iconBubble, { backgroundColor: isOver ? 'rgba(255,112,89,0.14)' : 'rgba(255,244,199,0.1)' }]}>
+                    <View style={[styles.iconBubble, { backgroundColor: isOver ? 'rgba(255,107,107,0.14)' : 'rgba(155,184,165,0.14)' }]}>
                       <IconSymbol
                         name={getCategoryIcon(budget.category)}
                         size={24}
-                        color={isOver ? palette.coral : '#FFF4C7'}
+                        color={isOver ? palette.red : palette.celadon}
                         weight="duotone"
                       />
                     </View>
@@ -239,7 +247,7 @@ export default function BudgetsScreen() {
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Text style={styles.categoryName}>{budget.category}</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={[styles.spentText, isOver && { color: palette.coral }]}>
+                          <Text style={[styles.spentText, isOver && { color: palette.red }]}>
                             {formatInr(spent)}
                           </Text>
                           <Text style={styles.limitText}>/ {formatInr(budget.limitPaise)}</Text>
@@ -250,7 +258,7 @@ export default function BudgetsScreen() {
                         <View style={{ flex: 1 }}>
                           <ProgressBar progress={ratio} tone={isOver ? 'bad' : 'default'} />
                         </View>
-                        <Text style={[styles.pctText, isOver && { color: palette.coral }]}>
+                        <Text style={[styles.pctText, isOver && { color: palette.red }]}>
                           {pct}%
                         </Text>
                       </View>
@@ -313,7 +321,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomColor: 'rgba(255,255,255,0.08)',
   },
   iconBubble: {
     width: 48,
@@ -324,27 +332,30 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     color: palette.paper,
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
   },
   spentText: {
     color: palette.paper,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
+    letterSpacing: -0.2,
   },
   limitText: {
     color: palette.muted,
-    fontSize: 14,
+    fontSize: 13,
     fontVariant: ['tabular-nums'],
+    fontFamily: 'monospace',
   },
   pctText: {
     color: palette.muted,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     minWidth: 32,
     textAlign: 'right',
+    fontFamily: 'monospace',
   },
   dotsBtn: {
     width: 32,
@@ -356,10 +367,10 @@ const styles = StyleSheet.create({
   menuCard: {
     position: 'absolute',
     width: 160,
-    backgroundColor: '#1E1E1C',
-    borderRadius: 14,
+    backgroundColor: palette.panel,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: palette.border,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
@@ -379,12 +390,12 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     color: palette.paper,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
   },
   menuDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     marginHorizontal: 12,
   },
 });
