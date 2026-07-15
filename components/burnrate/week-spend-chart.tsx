@@ -21,6 +21,14 @@ const AVG_DOT_COUNT = 28;
 const AVG_DOT_SIZE = 2;
 const AVG_DOT_GAP = 4;
 
+// Tooltip sizing constants — used to compute how far above the bar
+// the breakdown card needs to sit so it never overlaps the plot.
+const TOOLTIP_ROW_HEIGHT = 16;
+const TOOLTIP_ROW_GAP = 4;
+const TOOLTIP_DIVIDER_BLOCK = 9; // 1px line + 4px margin top/bottom
+const TOOLTIP_VERTICAL_PADDING = 16; // 8 top + 8 bottom
+const TOOLTIP_MARGIN_FROM_BAR = 10;
+
 type Props = {
   days: WeekDaySpend[];
   totalPaise: number;
@@ -182,6 +190,152 @@ function AverageDottedLine({
   );
 }
 
+/** Per-category breakdown card shown above the pressed day's bar. */
+function DaySpendBreakdown({
+  segments,
+  total,
+  isFirst,
+  isLast,
+}: {
+  segments: WeekDayCategorySpend[];
+  total: number;
+  isFirst: boolean;
+  isLast: boolean;
+}) {
+  const sorted = [...segments]
+    .filter((s) => s.amountPaise > 0)
+    .sort((a, b) => b.amountPaise - a.amountPaise);
+
+  const rowCount = sorted.length;
+  const height =
+    TOOLTIP_VERTICAL_PADDING +
+    rowCount * TOOLTIP_ROW_HEIGHT +
+    Math.max(0, rowCount - 1) * TOOLTIP_ROW_GAP +
+    (rowCount > 0 ? TOOLTIP_DIVIDER_BLOCK : 0) +
+    TOOLTIP_ROW_HEIGHT; // total row
+
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        top: -(height + TOOLTIP_MARGIN_FROM_BAR),
+        left: isFirst ? -6 : -16,
+        right: isLast ? -6 : -16,
+        minWidth: 120,
+        alignSelf: "flex-start",
+        backgroundColor: palette.surface,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: palette.border,
+        zIndex: 30,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 10,
+        gap: TOOLTIP_ROW_GAP,
+      }}
+    >
+      {sorted.map((segment) => (
+        <View
+          key={segment.category}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            height: TOOLTIP_ROW_HEIGHT,
+          }}
+        >
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 5,
+              flexShrink: 1,
+            }}
+          >
+            <View
+              style={{
+                width: 7,
+                height: 7,
+                borderRadius: 3.5,
+                backgroundColor: getCategoryChartColor(segment.category),
+                flexShrink: 0,
+              }}
+            />
+            <Text
+              style={{
+                color: palette.muted,
+                fontSize: 10,
+                fontFamily: "monospace",
+                fontWeight: "600",
+              }}
+              numberOfLines={1}
+            >
+              {segment.category}
+            </Text>
+          </View>
+          <Text
+            style={{
+              color: palette.paper,
+              fontSize: 10,
+              fontFamily: "monospace",
+              fontWeight: "700",
+            }}
+          >
+            {formatChartScale(segment.amountPaise)}
+          </Text>
+        </View>
+      ))}
+
+      {sorted.length > 0 && (
+        <View
+          style={{
+            height: 1,
+            backgroundColor: palette.border,
+            marginVertical: 2,
+          }}
+        />
+      )}
+
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          height: TOOLTIP_ROW_HEIGHT,
+        }}
+      >
+        <Text
+          style={{
+            color: palette.muted,
+            fontSize: 10,
+            fontFamily: "monospace",
+            fontWeight: "700",
+          }}
+        >
+          Total
+        </Text>
+        <Text
+          style={{
+            color: palette.paper,
+            fontSize: 11,
+            fontFamily: "monospace",
+            fontWeight: "700",
+          }}
+        >
+          {formatChartScale(total)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
 export function WeekSpendChart({
   days,
   totalPaise,
@@ -327,29 +481,13 @@ export function WeekSpendChart({
                         opacity: isOtherSelected ? 0.4 : 1,
                       }}
                     >
-                      {isSelected && (
-                        <View style={{
-                          position: "absolute",
-                          top: -38,
-                          left: isFirst ? -8 : undefined,
-                          right: isLast ? -8 : undefined,
-                          backgroundColor: palette.surface,
-                          paddingHorizontal: 8,
-                          paddingVertical: 6,
-                          borderRadius: 8,
-                          borderWidth: 1,
-                          borderColor: palette.border,
-                          zIndex: 30,
-                          shadowColor: "#000",
-                          shadowOffset: { width: 0, height: 4 },
-                          shadowOpacity: 0.35,
-                          shadowRadius: 10,
-                          elevation: 10,
-                        }}>
-                          <Text style={{ color: palette.paper, fontSize: 11, fontFamily: "monospace", fontWeight: "700", whiteSpace: "nowrap" }}>
-                            {formatChartScale(total)}
-                          </Text>
-                        </View>
+                      {isSelected && total > 0 && (
+                        <DaySpendBreakdown
+                          segments={segments}
+                          total={total}
+                          isFirst={isFirst}
+                          isLast={isLast}
+                        />
                       )}
                       {total > 0 && segments.length > 0 ? (
                         <StackedCategoryBar
@@ -408,18 +546,17 @@ export function WeekSpendChart({
             style={{
               flexDirection: "row",
               flexWrap: "wrap",
-              gap: 10,
               marginTop: 4,
-              alignItems: "center",
             }}
           >
             {/* Avg line key */}
             <View
               style={{
+                width: "50%",
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 6,
-                paddingVertical: 2,
+                paddingVertical: 4,
               }}
             >
               <View
@@ -458,10 +595,11 @@ export function WeekSpendChart({
               <View
                 key={category}
                 style={{
+                  width: "50%",
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 6,
-                  paddingVertical: 2,
+                  paddingVertical: 4,
                 }}
               >
                 <View
@@ -479,6 +617,7 @@ export function WeekSpendChart({
                     fontFamily: "monospace",
                     fontWeight: "600",
                   }}
+                  numberOfLines={1}
                 >
                   {category}
                 </Text>
